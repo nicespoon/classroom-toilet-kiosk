@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Classroom Toilet{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center my-4">
+            <h1>Admin Panel</h1>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-primary me-2">Back to Main</a>
+                <a href="{{ url_for('history') }}" class="btn btn-info">View History</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Section -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('set_max_students') }}">
+                    <div class="mb-3">
+                        <label for="max_students" class="form-label">Maximum students out at once:</label>
+                        <input type="number" class="form-control" id="max_students" name="max_students" 
+                               value="{{ max_students }}" min="1" max="10" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Update Setting</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Student Section -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Add Student</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_student') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Student Name:</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="Enter student name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Students List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Students ({{ students|length }} total)</h5>
+            </div>
+            <div class="card-body">
+                {% if students %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Time Out</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.name }}</td>
+                                <td>
+                                    {% if student.is_out %}
+                                        <span class="badge bg-danger">Out</span>
+                                    {% else %}
+                                        <span class="badge bg-success">In</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if student.time_out %}
+                                        {{ student.time_out.strftime('%Y-%m-%d %H:%M') if student.time_out else '' }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('remove_student', student_id=student.id) }}" 
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Are you sure you want to remove {{ student.name }}?')">
+                                        Remove
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No students added yet. Add some students above to get started.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

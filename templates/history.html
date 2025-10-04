@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}History - Classroom Toilet{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center my-4">
+            <h1>Toilet Visit History</h1>
+            <div>
+                <a href="{{ url_for('admin') }}" class="btn btn-secondary me-2">Back to Admin</a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Main</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Filter -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Search & Filter</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('history') }}">
+                    <div class="mb-3">
+                        <label for="search" class="form-label">Search by student name:</label>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               value="{{ search }}" placeholder="Enter student name">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    <a href="{{ url_for('history') }}" class="btn btn-secondary">Clear</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History Records -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>
+                    Recent Visits
+                    {% if search %}
+                        - Filtered by "{{ search }}"
+                    {% endif %}
+                    ({{ records|length }} records)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if records %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Sign Out Time</th>
+                                <th>Sign In Time</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td><strong>{{ record.student_name }}</strong></td>
+                                <td>{{ record.sign_out_formatted }}</td>
+                                <td>
+                                    {% if record.sign_in_time %}
+                                        {{ record.sign_in_formatted }}
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Still out</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.duration_minutes is not none %}
+                                        {% if record.duration_minutes < 1 %}
+                                            &lt;1 min
+                                        {% elif record.duration_minutes < 60 %}
+                                            {{ record.duration_minutes }} min
+                                        {% else %}
+                                            {{ (record.duration_minutes // 60) }}h {{ (record.duration_minutes % 60) }}m
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if records|length >= 100 %}
+                <div class="alert alert-info mt-3">
+                    <strong>Note:</strong> Showing the most recent 100 records. Use search to find specific students.
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted fs-5">
+                        {% if search %}
+                            No records found for "{{ search }}".
+                        {% else %}
+                            No toilet visits recorded yet.
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if records %}
+<!-- Quick Stats -->
+<div class="row mt-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h4 class="text-primary">{{ records|length }}</h4>
+                        <p class="text-muted">Total Visits</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-success">
+                            {{ records|selectattr('sign_in_time')|list|length }}
+                        </h4>
+                        <p class="text-muted">Completed</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-warning">
+                            {{ records|rejectattr('sign_in_time')|list|length }}
+                        </h4>
+                        <p class="text-muted">Still Out</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-info">
+                            {% set avg = records|selectattr('duration_minutes')|map(attribute='duration_minutes')|list %}
+                            {% if avg %}
+                                {{ (avg|sum / avg|length)|round|int }} min
+                            {% else %}
+                                - min
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted">Avg Duration</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

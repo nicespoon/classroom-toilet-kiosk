@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Toilet Sign-Out{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-md-8 col-lg-6 mx-auto">
+        <h1 class="text-center my-4">Toilet Sign-Out</h1>
+
+        {% if is_full %}
+        <div class="alert alert-danger d-flex flex-column align-items-center text-center p-4 shadow-sm">
+            <svg class="mb-3" height="4em" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+            </svg>
+            <h4 class="alert-heading mb-3">Toilet is Full - Please Wait!</h4>
+            <p class="h5 mb-0">
+                <span class="badge bg-danger">{{ students_out_count }}/{{ max_students }}</span>
+                student{% if students_out_count > 1 %}s{% endif %} currently out
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-success d-flex flex-column align-items-center text-center p-4 shadow-sm">
+            <svg class="mb-3" height="4em" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+            <h4 class="alert-heading mb-3">Toilet Available</h4>
+            <p class="h5 mb-0">
+                <span class="badge bg-success">{{ max_students - students_out_count }}</span>
+                spot{% if max_students - students_out_count > 1 %}s{% endif %} available
+                <span class="text-muted">
+                    ({{ students_out_count }}/{{ max_students }} out)
+                </span>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <h3 class="text-center mb-4">Tap your name to sign out, and again when you get back.</h3>
+
+        <div class="row g-3">
+            {% for student in students %}
+                <div class="col-6 col-sm-4 col-md-3 col-lg-1">
+                    <div class="ratio ratio-1x1">
+                        {% if student.is_out %}
+                            <a href="{{ url_for('sign_in', student_id=student.id) }}" 
+                               class="btn btn-danger fs-5 d-flex flex-column align-items-center justify-content-center py-4"
+                               hx-get="{{ url_for('sign_in', student_id=student.id) }}"
+                               hx-target="body"
+                               hx-swap="outerHTML">
+                                <span class="fw-bold">{{ student.name }}</span>
+                                <small class="mt-2 text-light">🚻</small>
+                            </a>
+                        {% else %}
+                            {% if not is_full %}
+                                <a href="{{ url_for('sign_out', student_id=student.id) }}" 
+                                   class="btn btn-success fs-5 d-flex flex-column align-items-center justify-content-center py-4"
+                                   hx-get="{{ url_for('sign_out', student_id=student.id) }}"
+                                   hx-target="body"
+                                   hx-swap="outerHTML">
+                                    <span class="fw-bold">{{ student.name }}</span>
+                                </a>
+                            {% else %}
+                                <button class="btn btn-secondary fs-5 d-flex flex-column align-items-center justify-content-center py-4" disabled>
+                                    <span class="fw-bold">{{ student.name }}</span>
+                                    <small class="mt-2">Not Available</small>
+                                </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3">
+    <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#adminModal">
+        Admin
+    </button>
+</div>
+
+<!-- Admin Confirmation Modal -->
+<div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adminModalLabel">⚠ Teachers Only</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>This admin area is only for teachers. Students should not access this section.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ url_for('admin') }}" class="btn btn-primary">I'm a Teacher - Continue</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

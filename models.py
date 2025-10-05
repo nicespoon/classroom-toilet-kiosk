@@ -13,11 +13,7 @@ class Student(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationship to history records
-    history_records = db.relationship('History', 
-                                    foreign_keys='History.student_name',
-                                    primaryjoin='Student.name == History.student_name',
-                                    backref='student_ref', 
-                                    lazy=True)
+    historyrecords = db.relationship('History', cascade="all, delete", backref='studentref')
 
     def __repr__(self):
         return f'<Student {self.name}>'
@@ -35,7 +31,7 @@ class History(db.Model):
     __tablename__ = 'history'
 
     id = db.Column(db.Integer, primary_key=True)
-    student_name = db.Column(db.String(100), nullable=False)
+    student_name = db.Column(db.String(100), db.ForeignKey('students.name'), nullable=False)
     sign_out_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     sign_in_time = db.Column(db.DateTime, nullable=True)
     duration_minutes = db.Column(db.Integer, nullable=True)

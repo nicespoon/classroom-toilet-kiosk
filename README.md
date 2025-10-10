@@ -25,21 +25,33 @@ A clean, minimal Flask application for primary classroom toilet management.
 
 ## Quick Start
 
-1. Install dependencies:
+1. Clone the repository:
+   ```
+   git clone https://github.com/nicespoon/classroom-toilet-kiosk.git
+   cd classroom-toilet-kiosk
+   ```
+
+2. Create and activate a virtual environment:
+   ```
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-2. Run the application:
+4. Run the application:
    ```
    python app.py
    ```
 
-3. Open your browser:
+5. Open your browser:
    - Main app: http://localhost:5000
    - Admin panel: http://localhost:5000/admin
 
-4. Setup:
+6. Setup:
    - Go to admin panel to add students
    - Set maximum students allowed out
    - Students can now use the main page

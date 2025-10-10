@@ -2,20 +2,22 @@
 
 A clean, minimal Flask application for primary classroom toilet management.
 
+![Classroom Toilet Sign-Out Kiosk](images/demo.gif)
+
 ## Features
 
-### Student Interface (/)
+### Student Interface (`/`)
 - Large, touchscreen-friendly buttons for each student name
 - Clear visual indication when toilet is at capacity
 - Clean, minimal design
 
-### Admin Interface (/admin)
+### Admin Interface (`/admin`)
 - Add and remove students
 - Configure maximum students allowed out
 - View current student status
 - Access to visit history
 
-### History (/admin/history)
+### History (`/admin/history`)
 - Complete log of all toilet visits
 - Search and filter by student name
 - Duration tracking

@@ -7,7 +7,14 @@
     <div class="col-12 col-md-8 col-lg-6 mx-auto">
         <h1 class="text-center my-4">Toilet Sign-Out</h1>
 
-        {% if is_full %}
+        {% if blockout_active %}
+        <div class="alert alert-warning d-flex flex-column align-items-center text-center p-4 shadow-sm">
+            <svg class="mb-3" height="4em" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+            </svg>
+            <h4 class="alert-heading mb-3">Toilet Unavailable</h4>
+        </div>
+        {% elif is_full %}
         <div class="alert alert-danger d-flex flex-column align-items-center text-center p-4 shadow-sm">
             <svg class="mb-3" height="4em" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
@@ -54,7 +61,7 @@
                                 <small class="mt-2 text-light">🚻</small>
                             </a>
                         {% else %}
-                            {% if not is_full %}
+                            {% if not is_sign_out_blocked %}
                                 <a href="{{ url_for('sign_out', student_id=student.id) }}" 
                                    class="btn btn-success fs-5 d-flex flex-column align-items-center justify-content-center py-4"
                                    hx-get="{{ url_for('sign_out', student_id=student.id) }}"
@@ -65,7 +72,7 @@
                             {% else %}
                                 <button class="btn btn-secondary fs-5 d-flex flex-column align-items-center justify-content-center py-4" disabled>
                                     <span class="fw-bold">{{ student.name }}</span>
-                                    <small class="mt-2">Not Available</small>
+                                    <small class="mt-2">Sign-Out Blocked</small>
                                 </button>
                             {% endif %}
                         {% endif %}
@@ -101,4 +108,13 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Keep kiosk status current as blockout windows start/end.
+    setInterval(function () {
+        window.location.reload();
+    }, 60000);
+</script>
 {% endblock %}

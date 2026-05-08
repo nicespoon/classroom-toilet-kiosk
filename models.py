@@ -39,3 +39,24 @@ class History(db.Model):
 
     def __repr__(self):
         return f'<History {self.student_name} - {self.sign_out_time}>'
+
+
+class BreakSchedule(db.Model):
+    __tablename__ = 'break_schedules'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    offset_before_minutes = db.Column(db.Integer, nullable=False, default=0)
+    offset_after_minutes = db.Column(db.Integer, nullable=False, default=0)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return (
+            f'<BreakSchedule {self.name} '
+            f'{self.start_time}-{self.end_time} '
+            f'(-{self.offset_before_minutes}/+{self.offset_after_minutes}) '
+            f'enabled={self.enabled}>'
+        )

@@ -14,6 +14,7 @@ A clean, minimal Flask application for primary classroom toilet management.
 ### Admin Interface (`/admin`)
 - Add and remove students
 - Configure maximum students allowed out
+- Configure break-based blockout windows with before/after offsets
 - View current student status
 - Access to visit history
 
@@ -22,6 +23,12 @@ A clean, minimal Flask application for primary classroom toilet management.
 - Search and filter by student name
 - Duration tracking
 - Quick statistics
+
+### Break Blockout Rules
+- Create one or more break schedules (for example, recess and lunch)
+- Set how many minutes to block sign-out before and after each break
+- During blockout windows, new sign-outs are prevented
+- Students already out can always sign back in during blockout
 
 ## Quick Start
 
@@ -54,6 +61,7 @@ A clean, minimal Flask application for primary classroom toilet management.
 6. Setup:
    - Go to admin panel to add students
    - Set maximum students allowed out
+   - Add break schedules and offsets if needed
    - Students can now use the main page
 
 ## Technical Details

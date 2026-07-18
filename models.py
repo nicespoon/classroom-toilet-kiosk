@@ -23,9 +23,15 @@ class Settings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     max_students = db.Column(db.Integer, default=2)
+    max_daily_visits = db.Column(db.Integer, nullable=True)
+    max_session_visits = db.Column(db.Integer, nullable=True)
 
     def __repr__(self):
-        return f'<Settings max_students={self.max_students}>'
+        return (
+            f'<Settings max_students={self.max_students} '
+            f'max_daily_visits={self.max_daily_visits} '
+            f'max_session_visits={self.max_session_visits}>'
+        )
 
 class History(db.Model):
     __tablename__ = 'history'

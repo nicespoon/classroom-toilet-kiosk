@@ -49,6 +49,7 @@
 
         <div class="row g-3">
             {% for student in students %}
+                {% set student_status = student_statuses[student.id] %}
                 <div class="col-6 col-sm-4 col-md-3 col-lg-1">
                     <div class="ratio ratio-1x1">
                         {% if student.is_out %}
@@ -61,7 +62,12 @@
                                 <small class="mt-2 text-light">🚻</small>
                             </a>
                         {% else %}
-                            {% if not is_sign_out_blocked %}
+                            {% if student_status.limit_reached %}
+                                <button class="btn btn-secondary fs-5 d-flex flex-column align-items-center justify-content-center py-4" disabled>
+                                    <span class="fw-bold">{{ student.name }}</span>
+                                    <small class="mt-2 student-status-label">{{ student_status.blocked_reason }}</small>
+                                </button>
+                            {% elif not is_sign_out_blocked %}
                                 <a href="{{ url_for('sign_out', student_id=student.id) }}" 
                                    class="btn btn-success fs-5 d-flex flex-column align-items-center justify-content-center py-4"
                                    hx-get="{{ url_for('sign_out', student_id=student.id) }}"
@@ -72,7 +78,7 @@
                             {% else %}
                                 <button class="btn btn-secondary fs-5 d-flex flex-column align-items-center justify-content-center py-4" disabled>
                                     <span class="fw-bold">{{ student.name }}</span>
-                                    <small class="mt-2">Sign-Out Blocked</small>
+                                    <small class="mt-2 student-status-label">Sign-Out Blocked</small>
                                 </button>
                             {% endif %}
                         {% endif %}
@@ -108,6 +114,21 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-status-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3.6em;
+        max-width: 5.5rem;
+        line-height: 1.25;
+        text-align: center;
+        text-wrap: balance;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from datetime import datetime, time
+from sqlalchemy import inspect, text
 from models import db, Student, Settings, History, BreakSchedule
 
 app = Flask(__name__)
@@ -12,22 +13,87 @@ db.init_app(app)
 
 MAX_OFFSET_MINUTES = 180
 
+
+def normalize_optional_limit(raw_value):
+    """Normalize optional positive integer settings values."""
+    value = (raw_value or '').strip()
+    if not value:
+        return None
+
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+
+    return parsed if parsed > 0 else None
+
+
+def ensure_settings_columns():
+    """Add new optional Settings columns for existing SQLite installs."""
+    inspector = inspect(db.engine)
+    columns = {column['name'] for column in inspector.get_columns('settings')}
+    statements = []
+
+    if 'max_daily_visits' not in columns:
+        statements.append('ALTER TABLE settings ADD COLUMN max_daily_visits INTEGER')
+
+    if 'max_session_visits' not in columns:
+        statements.append('ALTER TABLE settings ADD COLUMN max_session_visits INTEGER')
+
+    for statement in statements:
+        db.session.execute(text(statement))
+
+    if statements:
+        db.session.commit()
+
 def init_db():
     """Initialise the database with required tables and default data"""
     with app.app_context():
         # Create all tables
         db.create_all()
+        ensure_settings_columns()
 
         # Create default settings if not exists
         if not Settings.query.first():
-            default_settings = Settings(id=1, max_students=2)
+            default_settings = Settings(
+                id=1,
+                max_students=2,
+                max_daily_visits=None,
+                max_session_visits=None
+            )
             db.session.add(default_settings)
             db.session.commit()
 
-def get_max_students():
-    """Get the maximum number of students allowed out"""
+
+def get_settings():
+    """Return the singleton settings row, creating defaults when needed."""
     settings = Settings.query.first()
-    return settings.max_students if settings else 2
+    if settings:
+        return settings
+
+    settings = Settings(
+        id=1,
+        max_students=2,
+        max_daily_visits=None,
+        max_session_visits=None
+    )
+    db.session.add(settings)
+    db.session.commit()
+    return settings
+
+
+def get_max_students():
+    """Get the maximum number of students allowed out."""
+    return get_settings().max_students
+
+
+def get_visit_limits():
+    """Get optional visit limit settings."""
+    settings = get_settings()
+    return {
+        'daily': settings.max_daily_visits,
+        'session': settings.max_session_visits
+    }
 
 def get_students_out_count():
     """Get count of students currently out"""
@@ -122,6 +188,116 @@ def get_blockout_status(now=None):
     }
 
 
+def get_current_session_boundary(now=None):
+    """Return metadata describing the start of the current teaching session."""
+    if now is None:
+        now = datetime.now()
+
+    session_start = datetime.combine(now.date(), time.min)
+    latest_schedule_name = None
+    schedules = BreakSchedule.query.filter_by(enabled=True).all()
+
+    for schedule in schedules:
+        break_end_at = datetime.combine(now.date(), schedule.end_time)
+        if schedule.start_time > schedule.end_time:
+            break_end_at = datetime.combine(now.date(), schedule.end_time)
+
+        if break_end_at <= now and break_end_at > session_start:
+            session_start = break_end_at
+            latest_schedule_name = schedule.name
+
+    return {
+        'start': session_start,
+        'source_schedule_name': latest_schedule_name
+    }
+
+
+def get_visit_counts(student_name, now=None):
+    """Return daily and current-session visit counts for a student."""
+    if now is None:
+        now = datetime.now()
+
+    start_of_day = datetime.combine(now.date(), time.min)
+    session_boundary = get_current_session_boundary(now)
+    session_start = session_boundary['start']
+
+    daily_count = History.query.filter(
+        History.student_name == student_name,
+        History.sign_out_time >= start_of_day,
+        History.sign_out_time <= now
+    ).count()
+
+    session_count = History.query.filter(
+        History.student_name == student_name,
+        History.sign_out_time >= session_start,
+        History.sign_out_time <= now
+    ).count()
+
+    return {
+        'daily': daily_count,
+        'session': session_count,
+        'session_start': session_start,
+        'session_source_schedule_name': session_boundary['source_schedule_name']
+    }
+
+
+def get_student_limit_status(student, now=None, visit_limits=None):
+    """Return whether a student has reached optional visit limits."""
+    if now is None:
+        now = datetime.now()
+
+    if visit_limits is None:
+        visit_limits = get_visit_limits()
+
+    counts = get_visit_counts(student.name, now)
+    blocked_reason = None
+
+    if visit_limits['daily'] and counts['daily'] >= visit_limits['daily']:
+        blocked_reason = 'Daily limit reached'
+    elif visit_limits['session'] and counts['session'] >= visit_limits['session']:
+        blocked_reason = 'Session limit reached'
+
+    return {
+        'daily_count': counts['daily'],
+        'session_count': counts['session'],
+        'daily_limit': visit_limits['daily'],
+        'session_limit': visit_limits['session'],
+        'session_start': counts['session_start'],
+        'session_source_schedule_name': counts['session_source_schedule_name'],
+        'limit_reached': blocked_reason is not None,
+        'blocked_reason': blocked_reason
+    }
+
+
+def build_student_statuses(students, now=None, visit_limits=None):
+    """Build per-student kiosk status metadata for the index template."""
+    statuses = {}
+
+    for student in students:
+        statuses[student.id] = get_student_limit_status(student, now, visit_limits)
+
+    return statuses
+
+
+def can_student_sign_out(student, now=None, visit_limits=None):
+    """Return whether a student can sign out right now."""
+    if student.is_out:
+        return False, 'Student already out'
+
+    blockout_status = get_blockout_status(now)
+    if blockout_status['active']:
+        return False, 'Sign-out blocked during break window'
+
+    if get_students_out_count() >= get_max_students():
+        return False, 'Toilet full'
+
+    limit_status = get_student_limit_status(student, now, visit_limits)
+    if limit_status['limit_reached']:
+        return False, limit_status['blocked_reason']
+
+    return True, None
+
+
 def redirect_admin(message, message_type='success'):
     """Redirect to admin page with one-shot status message."""
     return redirect(url_for('admin', message=message, message_type=message_type))
@@ -170,15 +346,21 @@ def parse_schedule_form(form_data):
 @app.route('/')
 def index():
     """Main student-facing page"""
+    now = datetime.now()
     students = Student.query.order_by(Student.name).all()
     max_students = get_max_students()
+    visit_limits = get_visit_limits()
     students_out_count = get_students_out_count()
-    blockout_status = get_blockout_status()
+    blockout_status = get_blockout_status(now)
     is_full = students_out_count >= max_students
+    student_statuses = build_student_statuses(students, now, visit_limits)
 
     return render_template('index.html',
                          students=students,
+                         student_statuses=student_statuses,
                          max_students=max_students,
+                         max_daily_visits=visit_limits['daily'],
+                         max_session_visits=visit_limits['session'],
                          students_out_count=students_out_count,
                          is_full=is_full,
                          blockout_active=blockout_status['active'],
@@ -187,21 +369,12 @@ def index():
 @app.route('/sign_out/<int:student_id>')
 def sign_out(student_id):
     """Sign out a student"""
-    blockout_status = get_blockout_status()
-    if blockout_status['active']:
-        return redirect(url_for('index'))
-
-    max_students = get_max_students()
-    students_out_count = get_students_out_count()
-
-    if students_out_count >= max_students:
-        return redirect(url_for('index'))
-
     student = Student.query.get_or_404(student_id)
-    if student.is_out:
-        return redirect(url_for('index'))
-
     now = datetime.now()
+    visit_limits = get_visit_limits()
+    can_sign_out, _ = can_student_sign_out(student, now, visit_limits)
+    if not can_sign_out:
+        return redirect(url_for('index'))
 
     # Update student status
     student.is_out = True
@@ -251,15 +424,27 @@ def sign_in(student_id):
 @app.route('/admin')
 def admin():
     """Admin page"""
+    now = datetime.now()
     students = Student.query.order_by(Student.name).all()
-    max_students = get_max_students()
+    settings = get_settings()
+    max_students = settings.max_students
+    current_session_boundary = get_current_session_boundary(now)
+    visit_limits = {
+        'daily': settings.max_daily_visits,
+        'session': settings.max_session_visits
+    }
+    student_statuses = build_student_statuses(students, now, visit_limits)
     schedules = BreakSchedule.query.order_by(BreakSchedule.start_time.asc()).all()
     message = request.args.get('message', '')
     message_type = request.args.get('message_type', 'info')
 
     return render_template('admin.html',
                          students=students,
+                         student_statuses=student_statuses,
                          max_students=max_students,
+                         max_daily_visits=settings.max_daily_visits,
+                         max_session_visits=settings.max_session_visits,
+                         current_session_boundary=current_session_boundary,
                          schedules=schedules,
                          message=message,
                          message_type=message_type)
@@ -290,18 +475,25 @@ def remove_student(student_id):
 
 @app.route('/admin/set_max_students', methods=['POST'])
 def set_max_students():
-    """Set maximum number of students"""
-    max_students = int(request.form['max_students'])
+    """Update kiosk settings, including optional visit limits."""
+    try:
+        max_students = int(request.form['max_students'])
+    except (TypeError, ValueError):
+        return redirect_admin('Maximum students must be a whole number.', 'danger')
 
-    if max_students > 0:
-        settings = Settings.query.first()
-        if not settings:
-            settings = Settings(id=1, max_students=max_students)
-            db.session.add(settings)
-        else:
-            settings.max_students = max_students
+    if max_students <= 0:
+        return redirect_admin('Maximum students must be greater than zero.', 'danger')
 
-        db.session.commit()
+    settings = get_settings()
+    settings.max_students = max_students
+    settings.max_daily_visits = normalize_optional_limit(
+        request.form.get('max_daily_visits')
+    )
+    settings.max_session_visits = normalize_optional_limit(
+        request.form.get('max_session_visits')
+    )
+
+    db.session.commit()
 
     return redirect(url_for('admin'))
 

@@ -39,6 +39,18 @@
                         <input type="number" class="form-control" id="max_students" name="max_students" 
                                value="{{ max_students }}" min="1" max="10" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="max_daily_visits" class="form-label">Maximum toilet visits per student per day:</label>
+                        <input type="number" class="form-control" id="max_daily_visits" name="max_daily_visits"
+                               value="{{ max_daily_visits if max_daily_visits is not none else '' }}" min="1" max="20">
+                        <div class="form-text">Leave blank to disable the daily limit.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="max_session_visits" class="form-label">Maximum toilet visits per student per session:</label>
+                        <input type="number" class="form-control" id="max_session_visits" name="max_session_visits"
+                               value="{{ max_session_visits if max_session_visits is not none else '' }}" min="1" max="20">
+                        <div class="form-text">A session resets after each configured break ends. Leave blank to disable the session limit.</div>
+                    </div>
                     <button type="submit" class="btn btn-success">Update Setting</button>
                 </form>
             </div>
@@ -220,6 +232,17 @@
                 <h5>Students ({{ students|length }} total)</h5>
             </div>
             <div class="card-body">
+                <p class="text-muted small mb-3">
+                    {% if current_session_boundary.source_schedule_name %}
+                        Session visits count since
+                        <strong>{{ current_session_boundary.source_schedule_name }}</strong>
+                        ended at
+                        <strong>{{ current_session_boundary.start.strftime('%H:%M') }}</strong>.
+                    {% else %}
+                        Session visits count from the start of today at
+                        <strong>{{ current_session_boundary.start.strftime('%H:%M') }}</strong>.
+                    {% endif %}
+                </p>
                 {% if students %}
                 <div class="table-responsive">
                     <table class="table table-striped">
@@ -227,12 +250,15 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Status</th>
+                                <th>Daily Visits</th>
+                                <th>Session Visits</th>
                                 <th>Time Out</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for student in students %}
+                            {% set student_status = student_statuses[student.id] %}
                             <tr>
                                 <td>{{ student.name }}</td>
                                 <td>
@@ -240,6 +266,18 @@
                                         <span class="badge bg-danger">Out</span>
                                     {% else %}
                                         <span class="badge bg-success">In</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ student_status.daily_count }}
+                                    {% if student_status.daily_limit %}
+                                        <span class="text-muted">/ {{ student_status.daily_limit }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ student_status.session_count }}
+                                    {% if student_status.session_limit %}
+                                        <span class="text-muted">/ {{ student_status.session_limit }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
